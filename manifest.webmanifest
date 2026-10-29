@@ -1,0 +1,25 @@
+{
+  "name": "ОПТП СКО — оперативные планы тушения пожаров",
+  "short_name": "ОПТП СКО",
+  "description": "Электронные оперативные планы тушения пожаров ДЧС СКО",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eff3f7",
+  "theme_color": "#112f47",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
