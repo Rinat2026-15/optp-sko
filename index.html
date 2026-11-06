@@ -67,6 +67,10 @@
 .folder-ack{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#445d6d;margin:10px 0}
 .folder-ack input{width:auto!important;margin:3px 0}
 @media(max-width:700px){#folderImportBox .import-actions{flex-direction:column;align-items:stretch}#folderImportBox .import-actions button{width:100%}}
+
+.delete-object-button{margin-left:8px;background:#a11b22}
+.delete-object-button:hover,.delete-object-button:focus-visible{background:#82151b}
+@media(max-width:700px){.delete-object-button{margin:8px 0 0;width:100%}}
 </style></head><body><header><div style="max-width:1100px;margin:auto"><small>ДЧС СЕВЕРО-КАЗАХСТАНСКОЙ ОБЛАСТИ</small><h1>ОПТП СКО</h1>Электронные оперативные планы тушения пожаров</div></header><main>
 <section id="setup"><h2>Подключение к Supabase</h2><p class="hint">Вставьте только Project URL и Publishable key (или anon public key). Настройте их один раз для публикации. Для постоянной настройки заполните файл config.js один раз. Если он не заполнен, введите параметры здесь. Секретные ключи сюда вводить нельзя.</p><label>Project URL</label><input id="url" placeholder="https://xxxx.supabase.co" autocomplete="off"><label>Publishable / anon public key</label><input id="key" type="text" autocomplete="off"><div class="row" style="margin-top:12px"><button id="connect">Подключить</button><button class="secondary" id="clearConfig">Очистить настройки</button></div></section>
 <section id="login" class="hidden"><h2>Вход администратора</h2><label>Электронная почта</label><input id="email" type="email" autocomplete="username"><label>Пароль</label><input id="password" type="password" autocomplete="current-password"><div class="row" style="margin-top:12px"><button id="signIn">Войти</button><button class="secondary" id="switchConfig">Настройки подключения</button></div></section>
@@ -74,7 +78,7 @@
 <p id="status" role="status"></p>
 <div id="app" class="hidden"><section aria-labelledby="unitsTitle"><h2 id="unitsTitle">Пожарные подразделения ДЧС СКО</h2><p id="unitStatus" class="hint" role="status"></p><div id="unitCards" class="unit-card-grid" aria-label="Выбор пожарного подразделения"></div><div id="unitNav" class="unit-nav hidden"><button type="button" id="backToUnits" class="secondary">← К подразделениям</button><strong id="unitNavTitle"></strong></div></section><div class="row" style="margin:12px 0"><input id="search" class="grow" placeholder="Общий поиск по названию, адресу, району, подразделению" aria-label="Общий поиск ОПТП"><button id="newObject">+ Объект</button><button id="reload" class="secondary">Обновить</button></div><div id="browseView" class="hidden"><section id="folderImportBox" class="import-panel hidden" aria-labelledby="folderImportTitle"><h3 id="folderImportTitle">Загрузить папку с готовыми ОПТП</h3><p class="folder-help"><b>Можно выбрать папку одного объекта</b> (например, <code>Театр кукол / ОПТП.docx</code> и <code>Театр кукол / Поэтажные планы / Этаж 1.jpg</code>) <b>или общую папку подразделения</b> с несколькими папками объектов. Сведения из DOCX распределяются по действующим вкладкам, а PDF и изображения схем — по этажам. Перед сохранением проверьте названия объектов и распознанные данные. Старые .doc и сканы сохраняются как файлы без извлечения текста. До 200 файлов за одну загрузку, каждый до 20 МБ.</p><div class="import-actions"><input type="file" id="folderFiles" webkitdirectory directory multiple aria-label="Выбрать папку объектов"><button id="previewFolder" class="secondary" type="button">Проверить папку</button></div><div id="folderPreview" role="status" class="import-preview"></div><label class="folder-ack"><input type="checkbox" id="folderConsent"><span>Подтверждаю проверку доступа к хранилищу Supabase. Если файлы доступны публично по ссылке, служебные планы могут увидеть посторонние.</span></label><button type="button" id="saveFolder" disabled>Загрузить в базу</button><div id="folderProgress" role="status" class="folder-progress"></div></section><section id="bulkImportBox" class="import-panel hidden" aria-labelledby="importHeading"><h3 id="importHeading">База ОПТП подразделения</h3><p class="hint">Загрузите список объектов выбранного подразделения (CSV из Excel). Схемы и документы можно добавить в карточку каждого объекта.</p><div class="import-actions"><button type="button" class="secondary" id="downloadCsv">Скачать шаблон CSV</button><input type="file" id="importCsvFile" accept=".csv,.tsv,text/csv,text/tab-separated-values" aria-label="CSV со списком объектов"><button type="button" class="secondary" id="previewCsv">Проверить файл</button></div><div id="csvPreview" role="status" class="import-preview"></div><button type="button" class="hidden" id="saveCsv" disabled>Добавить объекты в базу</button></section><div class="grid"><aside id="objects"></aside><div><section id="details">Выберите объект</section><section id="editBox" class="hidden"><h3 id="editTitle">Карточка объекта</h3><form id="objForm"><label>Название</label><input id="name" required><label>Адрес</label><input id="address"><label>Район/город</label><input id="district"><label for="objectUnit">Закреплённое подразделение</label><select id="objectUnit"><option value="">Не закреплено</option></select><label>Этажность</label><input id="floors" type="number" min="0"><label>Высота, м</label><input id="height_m" type="number" step="0.1" min="0"><label>Описание и габариты</label><textarea id="description" rows="3"></textarea><label>Водоснабжение</label><textarea id="water_supply" rows="2"></textarea><label>Эвакуация</label><textarea id="evacuation" rows="2"></textarea><label>Силы и средства</label><textarea id="forces_and_means" rows="3"></textarea><p id="forcesHint" class="hint">Это поле доступно после добавления колонки Supabase.</p><div class="row" style="margin-top:12px"><button>Сохранить</button><button type="button" class="secondary" id="cancelEdit">Отмена</button></div></form></section><section id="files" class="hidden"><h3>Схемы этажей и документы</h3><form id="fileForm"><label>Тип материала</label><select id="kind"><option value="floor">Поэтажная схема</option><option value="water">Схема расположения водоисточников</option><option value="doc">Оперативный документ</option></select><label>Название</label><input id="fileTitle" placeholder="Например: План 1-го этажа" required><label>Номер этажа (для схем)</label><input id="floorNumber" type="number" placeholder="1"><label>Файл (JPG, PNG, PDF, DOC или DOCX)</label><input id="fileInput" type="file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" required><div style="margin-top:12px"><button>Загрузить в Supabase</button></div></form><h4>Поэтажные схемы</h4><div id="floorList"></div><h4>Документы</h4><div id="docList"></div><div id="waterSchemeList" class="hidden"></div></section></div></div></div></div>
 </main><div class="viewer hidden" id="planViewer" role="dialog" aria-modal="true" aria-label="Просмотр поэтажных схем"><div class="viewerbar"><strong id="viewerTitle">Поэтажная схема</strong><button id="viewerClose" type="button">✕ Закрыть</button></div><div class="viewerbar"><div id="floorTabs" aria-label="Выбор этажа"></div><button id="zoomOut" type="button">−</button><button id="zoomReset" type="button">100%</button><button id="zoomIn" type="button">+</button><a id="viewerExternal" target="_blank" rel="noopener noreferrer" style="color:#fff">В отдельной вкладке</a></div><div class="viewstage" id="viewStage"></div><div class="viewer-note">Изображения: колесо мыши или два пальца — масштаб; перетаскивание — перемещение. PDF можно прокручивать внутри окна.</div></div><script src="units.js"></script><script src="csv-import.js"></script><script src="folder-import.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script><script src="word-fields.js"></script><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
-const $=s=>document.querySelector(s),safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let units=[],unitsReady=false,forcesReady=false,activeScope=null,importPending=[],importUnit=null;let client,role="guest",objs=[],selected=null,editId=null,floorItems=[],waterItems=[],viewerKind='floor',viewerIndex=0,viewerScale=1,viewerX=0,viewerY=0,dragStart=null,pointers=new Map();
+const $=s=>document.querySelector(s),safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let units=[],unitsReady=false,forcesReady=false,deleteBusy=false,activeScope=null,importPending=[],importUnit=null;let client,role="guest",objs=[],selected=null,editId=null,floorItems=[],waterItems=[],viewerKind='floor',viewerIndex=0,viewerScale=1,viewerX=0,viewerY=0,dragStart=null,pointers=new Map();
 const status=(message,bad=false)=>{$('#status').textContent=message;$('#status').className=bad?'error':''};const check=(r)=>{if(r.error)throw r.error;return r.data};const show=(id,yes)=>$('#'+id).classList.toggle('hidden',!yes);
 const config=()=>{let fixed=window.OPTP_CONFIG||{};let o=(fixed.url||'').trim()||localStorage.getItem('optp_url'),k=(fixed.key||'').trim()||localStorage.getItem('optp_public_key');if(o)$('#url').value=o;if(k)$('#key').value=k;return o&&k};
 async function init(){try{if(!window.supabase)throw Error('Не загружена библиотека Supabase. Проверьте интернет.');const url=$('#url').value.trim(),key=$('#key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url))throw Error('Неверный Project URL');if(!key||key.startsWith('sb_secret_'))throw Error('Укажите только публичный ключ.');localStorage.setItem('optp_url',url);localStorage.setItem('optp_public_key',key);client=window.supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true}});show('setup',false);const {data,error}=await client.auth.getSession();if(error)throw error;if(data.session)await enter();else await enterGuest()}catch(e){status(e.message,true)}}
@@ -162,7 +166,7 @@ else if(currentTab==='water')content=line('Наружное и внутренн�
 +(role==='admin'||role==='editor'?'<button type="button" id="addWaterScheme" class="secondary">+ Добавить схему расположения</button>':'');
 else if(currentTab==='floor')content='<p class="hint">Нажмите «Открыть» для просмотра схемы, масштабирования и переключения этажей.</p>'+($('#floorList').innerHTML||'<span class="hint">Схемы не загружены</span>');
 else content=line('Привлекаемые силы и средства',o.forces_and_means)+'<p class="hint">Оригиналы оперативных документов:</p>'+($('#docList').innerHTML||'<span class="hint">Материалы не загружены</span>');
-$('#details').innerHTML=`<button type="button" id="backToObjects" class="back-list">← К списку объектов</button><h2>${safe(o.name)}</h2><div class="tabbar">${tabs.map(([id,title])=>`<button type="button" class="${currentTab===id?'active':''}" data-tab="${id}">${title}</button>`).join('')}</div><div class="tab-content">${content}</div>${role==='admin'||role==='editor'?'<button type="button" id="editObject">Редактировать карточку</button>':''}`;
+$('#details').innerHTML=`<button type="button" id="backToObjects" class="back-list">← К списку объектов</button><h2>${safe(o.name)}</h2><div class="tabbar">${tabs.map(([id,title])=>`<button type="button" class="${currentTab===id?'active':''}" data-tab="${id}">${title}</button>`).join('')}</div><div class="tab-content">${content}</div>${role==='admin'||role==='editor'?'<button type="button" id="editObject">Редактировать карточку</button>':''}${role==='admin'?'<button type="button" id="deleteObject" class="delete-object-button">Удалить объект</button>':''}`;
 }
 async function drawDetails(){const o=objs.find(x=>x.id===selected);show('files',!!o&&(role==='admin'||role==='editor'));show('editBox',false);if(!o){document.body.classList.remove('object-open');$('#details').textContent='Выберите объект';return}document.body.classList.add('object-open');await loadFiles();renderCard()}
 async function loadFiles(){try{
@@ -176,6 +180,51 @@ async function loadFiles(){try{
  $('#waterSchemeList').innerHTML=buttons(waterItems,'water');renderCard()
 }catch(e){status('Ошибка получения схем: '+e.message,true)}}
 function openEditor(o){$('#objectUnit').value=o?.fire_unit_id||(units.some(u=>u.id===activeScope)?activeScope:'');if(o?.fire_unit_id&&!units.some(u=>u.id===o.fire_unit_id)){const option=new Option('Текущее подразделение (недоступно)',o.fire_unit_id);$('#objectUnit').add(option);$('#objectUnit').value=o.fire_unit_id}editId=o?.id||null;for(const f of ['name','address','district','floors','height_m','description','water_supply','evacuation'])$('#'+f).value=o?.[f]??'';$('#forces_and_means').value=o?.forces_and_means??'';$('#forces_and_means').disabled=!forcesReady;$('#forcesHint').textContent=forcesReady?'':'Поле доступно после SQL-миграции в Supabase.';show('editBox',true);$('#editTitle').textContent=o?'Редактировать объект':'Новый объект'}
+async function deleteCurrentObject(){
+ if(deleteBusy||role!=='admin')return;
+ const object=objs.find(o=>o.id===selected);
+ if(!object)return;
+ const given=window.prompt('Для удаления введите ТОЧНОЕ название объекта: '+object.name);
+ if(given===null||given.trim()!==String(object.name).trim()){
+  if(given!==null)status('Удаление отменено: название не совпало',true);
+  return;
+ }
+ if(!window.confirm('БЕЗВОЗВРАТНО удалить объект «'+object.name+'», все его ОПТП, документы, поэтажные планы и схемы водоснабжения?'))return;
+ deleteBusy=true;
+ const button=$('#deleteObject');if(button)button.disabled=true;
+ status('Удаление объекта и записей из базы…');
+ try{
+  // Объект и связанные строки удаляются одним транзакционным вызовом;
+  // при ошибке RPC база остаётся без изменений.
+  const result=check(await client.rpc('optp_admin_delete_object',{p_object_id:object.id}));
+  const paths=Array.isArray(result)?result.filter(p=>typeof p==='string'&&p):[];
+  const safePaths=paths.filter(path=>path.startsWith(object.id+'/'));
+  const unexpected=paths.length-safePaths.length;
+  const failures=[];
+  for(let i=0;i<safePaths.length;i+=50){
+   const batch=safePaths.slice(i,i+50);
+   try{
+    const removed=await client.storage.from('optp-files').remove(batch);
+    if(removed.error)failures.push(...batch);
+   }catch(_error){failures.push(...batch)}
+  }
+  const name=object.name;
+  selected=null;document.body.classList.remove('object-open');show('editBox',false);show('files',false);
+  await loadObjects();
+  if(failures.length||unexpected){
+   status('Объект «'+name+'» удалён из базы, но '+(failures.length+unexpected)+' файлов могли остаться в Supabase Storage. Требуется очистка файлов в разделе Storage.',true);
+  }else{
+   status('Объект «'+name+'» удалён вместе с документами и схемами.');
+  }
+ }catch(error){
+  if(/optp_admin_delete_object|schema cache|function/i.test(error.message)){
+   status('Удаление недоступно: необходимо один раз выполнить SQL-миграцию 202611060004_delete_object.sql в Supabase SQL Editor. '+error.message,true);
+  }else status('Ошибка удаления: '+error.message,true);
+ }finally{
+  deleteBusy=false;
+  const current=$('#deleteObject');if(current)current.disabled=false;
+ }
+}
 $('#connect').onclick=init;$('#clearConfig').onclick=()=>{localStorage.removeItem('optp_url');localStorage.removeItem('optp_public_key');$('#url').value='';$('#key').value='';status('Настройки очищены')};$('#switchConfig').onclick=()=>{show('setup',true);show('login',false)};
 $('#signIn').onclick=async()=>{try{status('Выполняется вход…');const r=await client.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#password').value});check(r);$('#password').value='';await enter()}catch(e){status('Ошибка входа: '+e.message,true)}};
 $('#logout').onclick=async()=>{await client.auth.signOut();await enterGuest();status('Выход из режима администратора')};$('#adminLogin').onclick=()=>{show('login',true);status('Введите email и пароль администратора')};
@@ -187,6 +236,7 @@ $('#importCsvFile').onchange=()=>{importPending=[];importUnit=null;$('#csvPrevie
 $('#previewCsv').onclick=async()=>{try{await previewImportFile()}catch(e){importPending=[];show('saveCsv',false);$('#csvPreview').textContent=e.message}};
 $('#saveCsv').onclick=async()=>{try{await saveImportFile()}catch(e){$('#csvPreview').textContent=e.message;status('Ошибка импорта: '+e.message,true)}};
 $('#reload').onclick=loadObjects;$('#newObject').onclick=()=>{if(activeScope===null)activeScope='all';updateUnitNavigation();openEditor(null)};$('#cancelEdit').onclick=()=>show('editBox',false);$('#details').onclick=e=>{if(e.target.closest('#backToObjects')){selected=null;document.body.classList.remove('object-open');show('files',false);show('editBox',false);drawObjects();drawDetails();$('#search').scrollIntoView({block:'start'});return}const t=e.target.closest('[data-tab]');if(t){currentTab=t.dataset.tab;renderCard();return}if(e.target.id==='editObject')openEditor(objs.find(x=>x.id===selected));
+else if(e.target.id==='deleteObject')deleteCurrentObject();
 else if(e.target.id==='addWaterScheme'){
  $('#kind').value='water';$('#fileTitle').value='Схема расположения водоисточников';
  $('#fileInput').accept='.jpg,.jpeg,.png,.pdf';$('#fileForm').scrollIntoView({block:'center',behavior:'smooth'})
