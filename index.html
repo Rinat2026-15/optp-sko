@@ -169,7 +169,7 @@ else if(currentTab==='floor')content='<p class="hint">Все схемы объе
   +(role==='admin'||role==='editor'?'<button type="button" id="selectSchemeFolder" class="secondary">+ Загрузить папку со схемами</button> <button type="button" id="addTechScheme" class="secondary">+ Добавить одну схему</button>':'')
   +(schemeImportMessage?'<p class="hint" id="schemeUploadMessage" role="status">'+safe(schemeImportMessage)+'</p>':'');
 else content=line('Привлекаемые силы и средства',o.forces_and_means)+'<p class="hint">Оригиналы оперативных документов:</p>'+($('#docList').innerHTML||'<span class="hint">Материалы не загружены</span>');
-$('#details').innerHTML=`<button type="button" id="backToObjects" class="back-list">← К списку объектов</button><h2>${safe(o.name)}</h2><div class="tabbar">${tabs.map(([id,title])=>`<button type="button" class="${currentTab===id?'active':''}" data-tab="${id}">${title}</button>`).join('')}</div><div class="tab-content">${content}</div>${role==='admin'||role==='editor'?'<button type="button" id="editObject">Редактировать карточку</button>':''}${role==='admin'?'<button type="button" id="deleteObject" class="delete-object-button">Удалить объект</button><button type="button" id="checkDeleteConfig" class="secondary">Проверить удаление</button><p id="deleteFeedback" role="status" class="hint"></p>':''}`;
+$('#details').innerHTML=`<button type="button" id="backToObjects" class="back-list">← К списку объектов</button><h2>${safe(o.name)}</h2><div class="tabbar">${tabs.map(([id,title])=>`<button type="button" class="${currentTab===id?'active':''}" data-tab="${id}">${title}</button>`).join('')}</div><div class="tab-content">${content}</div>${role==='admin'||role==='editor'?'<button type="button" id="editObject">Редактировать карточку</button>':''}${role==='admin'?'<button type="button" id="deleteObject" class="delete-object-button">Удалить объект</button><button type="button" id="checkDeleteConfig" class="secondary">Проверить удаление</button><div id="deleteConfirmPanel" class="hidden" role="group" aria-label="Подтверждение удаления объекта"><p><strong>Удаление без возможности восстановления</strong>. Будут удалены карточка и связанные документы, планы этажей и схемы.</p><label for="deleteObjectName">Введите точное название: ${safe(o.name)}</label><input id="deleteObjectName" type="text" autocomplete="off"><label class="folder-ack"><input type="checkbox" id="deleteObjectAcknowledge"> Подтверждаю безвозвратное удаление</label><div class="row"><button type="button" id="confirmDeleteObject" class="delete-object-button">Подтвердить удаление</button><button type="button" id="cancelDeleteObject" class="secondary">Отмена</button></div></div><p id="deleteFeedback" role="status" class="hint"></p>':''}`;
 }
 async function drawDetails(){const o=objs.find(x=>x.id===selected);show('files',!!o&&(role==='admin'||role==='editor'));show('editBox',false);if(!o){document.body.classList.remove('object-open');$('#details').textContent='Выберите объект';return}document.body.classList.add('object-open');await loadFiles();renderCard()}
 async function loadFiles(){try{
@@ -229,10 +229,28 @@ async function checkDeleteConfiguration(){
  }catch(err){showDeleteFeedback(deleteErrorText(err),true)}
  finally{const control=$('#checkDeleteConfig');if(control)control.disabled=false}
 }
+function openDeleteConfirmation(){
+ if(deleteBusy||role!=='admin'||!selected)return;
+ const panel=$('#deleteConfirmPanel');
+ if(!panel)return;
+ panel.classList.remove('hidden');
+ $('#deleteObjectName').value='';
+ $('#deleteObjectAcknowledge').checked=false;
+ $('#deleteObjectName').focus();
+ showDeleteFeedback('Для удаления введите название объекта и подтвердите действие.');
+}
 async function deleteCurrentObject(){
  if(deleteBusy||role!=='admin')return;
  const object=objs.find(o=>o.id===selected);
  if(!object)return;
+ if($('#deleteObjectName')?.value.trim()!==String(object.name).trim()){
+  showDeleteFeedback('Название не совпало. Объект не удалён.',true);
+  return;
+ }
+ if(!$('#deleteObjectAcknowledge')?.checked){
+  showDeleteFeedback('Поставьте галочку подтверждения безвозвратного удаления.',true);
+  return;
+ }
  deleteBusy=true;
  const button=$('#deleteObject');if(button)button.disabled=true;
  showDeleteFeedback('Проверяю возможность удаления в Supabase…');
@@ -247,17 +265,6 @@ async function deleteCurrentObject(){
    }
   }else{
    showDeleteFeedback('Сервер не подтвердил безопасную проверку функции удаления. Объект не изменён.',true);
-   return;
-  }
-  // Имя и отдельное подтверждение запрашиваем только после успешной проверки.
-  const given=window.prompt('Для удаления введите ТОЧНОЕ название объекта: '+object.name);
-  if(given===null){showDeleteFeedback('Удаление отменено. Объект сохранён.');return}
-  if(given.trim()!==String(object.name).trim()){
-   showDeleteFeedback('Название не совпало. Объект не удалён.',true);
-   return;
-  }
-  if(!window.confirm('БЕЗВОЗВРАТНО удалить объект «'+object.name+'», все его ОПТП, документы, поэтажные планы и схемы водоснабжения?')){
-   showDeleteFeedback('Удаление отменено. Объект сохранён.');
    return;
   }
   showDeleteFeedback('Удаление объекта и связанных записей из Supabase…');
@@ -303,7 +310,12 @@ $('#previewCsv').onclick=async()=>{try{await previewImportFile()}catch(e){import
 $('#saveCsv').onclick=async()=>{try{await saveImportFile()}catch(e){$('#csvPreview').textContent=e.message;status('Ошибка импорта: '+e.message,true)}};
 $('#reload').onclick=loadObjects;$('#newObject').onclick=()=>{if(activeScope===null)activeScope='all';updateUnitNavigation();openEditor(null)};$('#cancelEdit').onclick=()=>show('editBox',false);$('#details').onclick=e=>{if(e.target.closest('#backToObjects')){selected=null;schemeImportMessage='';document.body.classList.remove('object-open');show('files',false);show('editBox',false);drawObjects();drawDetails();$('#search').scrollIntoView({block:'start'});return}const t=e.target.closest('[data-tab]');if(t){currentTab=t.dataset.tab;renderCard();return}if(e.target.id==='editObject')openEditor(objs.find(x=>x.id===selected));
 else if(e.target.id==='selectSchemeFolder'){if(!schemeUploadBusy)$('#schemeFolderFiles').click();}
-else if(e.target.id==='deleteObject')deleteCurrentObject();
+else if(e.target.id==='deleteObject')openDeleteConfirmation();
+else if(e.target.id==='confirmDeleteObject')deleteCurrentObject();
+else if(e.target.id==='cancelDeleteObject'){
+ $('#deleteConfirmPanel').classList.add('hidden');
+ showDeleteFeedback('Удаление отменено. Объект сохранён.');
+}
 else if(e.target.id==='checkDeleteConfig')checkDeleteConfiguration();
 else if(e.target.id==='addFloorPlan'){
  $('#kind').value='floor';$('#kind').onchange();$('#fileTitle').value='';$('#fileTitle').placeholder='Например: Подвал или Этаж 1';$('#fileForm').scrollIntoView({block:'center',behavior:'smooth'})
