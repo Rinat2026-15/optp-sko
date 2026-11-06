@@ -203,8 +203,10 @@ async function deleteCurrentObject(){
   const failures=[];
   for(let i=0;i<safePaths.length;i+=50){
    const batch=safePaths.slice(i,i+50);
-   const removed=await client.storage.from('optp-files').remove(batch);
-   if(removed.error)failures.push(...batch);
+   try{
+    const removed=await client.storage.from('optp-files').remove(batch);
+    if(removed.error)failures.push(...batch);
+   }catch(_error){failures.push(...batch)}
   }
   const name=object.name;
   selected=null;document.body.classList.remove('object-open');show('editBox',false);show('files',false);
