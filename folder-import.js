@@ -3,6 +3,7 @@
  'use strict';
  const WORD=/\.(doc|docx)$/i, PDF=/\.pdf$/i, IMAGE=/\.(jpe?g|png)$/i;
  const waterHint=/(?:водоснабжен|гидрант|водоисточник|водозабор|пожарн.{0,14}водо[её]м|схем.{0,30}водо[её]м|расположен.{0,30}пг(?:\\b|\\d))/i;
+ const industrialHint=/(?:генплан|генеральн(?:ый|ого)\s+план|ситуационн(?:ый|ого)\s+план|план\s+(?:территори|размещени|расположени|эвакуац|подъезд)|черт[её]ж|технологическ|зерносушил|сушильн|элеватор|силос|зернохранилищ|нори[яи]|конвейер|транспортер|транспорт[её]р|цех|производственн|установк|оборудовани|котельн|топливохранилищ|бункер|галере|чердак|чердачн|мансард|подвал|подвальн|цокол|подземн|кровл|крыш[аеи]|антресол)/i;
  const floorHint=/(?:поэтаж|схем[аы]?|этаж[иаи]?|floor|план[ы]?\s+этаж|plans?\s*floor)/i;
  const fileFloor=/(?:^|[\s._(-])(?:-?\d{1,2}\s*[-–— ]*?(?:-?й|-?го|-?ый)?\s*(?:эт\.?|этаж|floor)|(?:эт\.?|этаж|floor)\s*[№# ]*\-?\d{1,2}|поэтажн(?:ый|ая|ое))/i;
  const norm=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('ru');
@@ -10,7 +11,7 @@
   const s=String(name||'').toLocaleLowerCase('ru').replace(/[–—]/g,'-');
   const match=s.match(/(?:этаж|эт\.?|floor)\s*[№# ]*?(-?\d{1,2})|(-?\d{1,2})\s*(?:-?й|-?го|-?ый)?\s*(?:этаж|эт\.?|floor)/i);
   if(match)return Number(match[1]??match[2]);
-  return /подвал|цоколь/.test(s)?-1:null;
+  return /подвал|цокол/.test(s)?-1:null;
  }
  function analyze(files){
   const all=Array.from(files||[]);
@@ -25,7 +26,7 @@
   const auxiliary=/^(?:поэтажн(?:ые|ые\s+планы|ые\s+схемы)?|поэтажные планы|поэтажные схемы|планы этажей|схемы|этажи|этажные планы|документы|оптп|планы|чертежи|водоснабжение|наружное водоснабжение|схемы водоснабжения|гидранты|схемы гидрантов|схемы расположения гидрантов)$/i;
   const atRoot=paths.some(parts=>parts.length===2&&support.test(parts[1]||''));
   const rootSubdirs=[...new Set(paths.filter(parts=>parts.length>=3).map(parts=>parts[1]))];
-  const looksLikeSingleObject=rootSubdirs.length>0&&rootSubdirs.every(name=>auxiliary.test(name));
+  const looksLikeSingleObject=rootSubdirs.length>0&&rootSubdirs.every(name=>auxiliary.test(name)||industrialHint.test(name));
   const singleObject=atRoot||looksLikeSingleObject;
   for(const file of all){
    const rel=String(file.webkitRelativePath||file.relativePath||'').replace(/\\/g,'/');
@@ -41,7 +42,7 @@
    const base=name.replace(/\.[^.]+$/,'').trim();
    const nested=parts.slice(singleObject?1:2,-1).join(' ');
    const isWater=(PDF.test(name)||IMAGE.test(name))&&waterHint.test(nested+' '+base);
-   const isFloor=!isWater&&(PDF.test(name)||IMAGE.test(name))&&(floorHint.test(nested)||fileFloor.test(base));
+   const isFloor=!isWater&&(PDF.test(name)||IMAGE.test(name))&&(floorHint.test(nested)||floorHint.test(base)||industrialHint.test(nested)||industrialHint.test(base)||fileFloor.test(base));
    if(IMAGE.test(name)&&!isFloor&&!isWater){skipped.push(rel+' (изображение не обозначено как схема)');continue}
    const kind=isWater?'water':isFloor?'floor':'doc';
    const key=[norm(objectName),kind,norm(base)].join('|');

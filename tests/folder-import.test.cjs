@@ -44,3 +44,26 @@ test('документ Word о водоснабжении не принимае�
  const r=analyze([f('Театр/Водоснабжение/Описание.docx')]);
  assert.equal(r.entries[0].kind,'doc');
 });
+
+test('зерносушилка и генплан распределяются в планы объекта',()=>{
+ const r=analyze([f('СПЧ-1/Агропредприятие/Зерносушилки/Схема зерносушилки.pdf'),f('СПЧ-1/Агропредприятие/Генплан.png')]);
+ assert.equal(r.objects.length,1);assert.equal(r.entries.filter(x=>x.kind==='floor').length,2);
+});
+test('подвал, чердак и цоколь сохраняются в поэтажных планах',()=>{
+ const r=analyze([f('Предприятие/Подвал.pdf'),f('Предприятие/Чердак.jpg'),f('Предприятие/План цоколя.png')]);
+ assert.equal(r.objects.length,1);assert.equal(r.entries.length,3);assert.ok(r.entries.every(x=>x.kind==='floor'));
+ assert.equal(r.entries[0].floorNumber,-1);
+});
+test('любая явно названная схема оборудования распознается',()=>{
+ const r=analyze([f('Предприятие/Схема установки 3.png'),f('Предприятие/Чертеж силоса.pdf'),f('Предприятие/План эвакуации.pdf')]);
+ assert.equal(r.entries.length,3);assert.ok(r.entries.every(x=>x.kind==='floor'));
+});
+test('схемы водоснабжения остаются в отдельном разделе',()=>{
+ const r=analyze([f('Предприятие/Водоснабжение/Гидранты.png'),f('Предприятие/Генплан.png')]);
+ assert.equal(r.entries.find(x=>x.title==='Гидранты').kind,'water');
+ assert.equal(r.entries.find(x=>x.title==='Генплан').kind,'floor');
+});
+test('документы Word и обычные фото не превращаются в планы',()=>{
+ const r=analyze([f('Предприятие/Описание зерносушилки.docx'),f('Предприятие/Фото фасада.jpg')]);
+ assert.equal(r.entries.length,1);assert.equal(r.entries[0].kind,'doc');assert.equal(r.skipped.length,1);
+});
