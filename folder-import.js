@@ -9,6 +9,8 @@
  const docHint=/(?:^оптп$|оперативн.{0,30}план|план\s+тушения\s+пожара|инструкция|описание|пояснительн|характеристика|ведомость|справка)/i;
  const docDir=/^(?:документы|оперативные документы|текстовые документы|отчеты|отчёты|описания)$/i;
  const norm=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('ru');
+ const genericFolder=/^(?:схемы|поэтажные планы|поэтажные схемы|планы этажей|планы|водоснабжение|документы|оперативные документы|оптп|чертежи)$/i;
+ function displayFolders(folders){let i=0;while(i<folders.length&&genericFolder.test(folders[i]))i++;return folders.slice(i)}
  const partsFor=file=>String(file.webkitRelativePath||file.relativePath||'').replace(/\\/g,'/').split('/').filter(Boolean);
  const baseName=name=>String(name||'').replace(/\.[^.]+$/,'').trim();
  function floorNumber(name){
@@ -36,7 +38,8 @@
   const sections=/^(?:поэтажные планы|поэтажные схемы|планы этажей|схемы|этажи|этажные планы|документы|оптп|планы|чертежи|водоснабжение|наружное водоснабжение|схемы водоснабжения|гидранты|схемы гидрантов|схемы расположения гидрантов)$/i;
   const atRoot=paths.some(parts=>parts.length===2&&ALLOWED.test(parts[1]||''));
   const subdirs=[...new Set(paths.filter(parts=>parts.length>=3).map(parts=>parts[1]))];
-  const oneObject=atRoot||(subdirs.length>0&&subdirs.every(name=>sections.test(name)||industrialHint.test(name)));
+  const isUnitRoot=/^(?:спч|пч|пп|мпп|мөcб|өсб)\s*-?\s*\d+/i.test(paths[0]?.[0]||'');
+  const oneObject=!isUnitRoot&&(atRoot||(subdirs.length>0&&subdirs.every(name=>sections.test(name)||industrialHint.test(name))));
   for(const file of all){
    const parts=partsFor(file),rel=parts.join('/');
    if(parts.length<(oneObject?2:3)){skipped.push(rel+' (не определена папка объекта)');continue}
@@ -48,7 +51,7 @@
    if(!ALLOWED.test(name)){skipped.push(rel+' (неподдерживаемый формат)');continue}
    if(!file.size||file.size>20*1024*1024){errors.push(rel+': файл пуст или больше 20 МБ');continue}
    const folders=parts.slice(oneObject?1:2,-1);
-   const titleParts=[...folders,baseName(name)].filter(Boolean);
+   const titleParts=[...displayFolders(folders),baseName(name)].filter(Boolean);
    const fullTitle=titleParts.join(' / ');
    if(!fullTitle){errors.push(rel+': пустое название файла');continue}
    if(fullTitle.length>180){errors.push(rel+': слишком длинный путь внутри объекта (больше 180 символов)');continue}
@@ -78,7 +81,7 @@
    if(!/\.(?:pdf|jpe?g|png)$/i.test(name)){skipped.push(rel+' (не графический PDF/JPG/PNG)');continue}
    if(!file.size||file.size>20*1024*1024){errors.push(rel+': пустой файл или больше 20 МБ');continue}
    const ext=name.split('.').at(-1).toLowerCase(),folders=parts.slice(1,-1);
-   const title=[...folders,baseName(name)].filter(Boolean).join(' / ');
+   const title=[...displayFolders(folders),baseName(name)].filter(Boolean).join(' / ');
    if(!title||title.length>180){errors.push(rel+': название слишком длинное или отсутствует');continue}
    const kind=waterHint.test(parts.slice(1).join(' '))?'water':'floor';
    const key=[kind,norm(title),ext].join('|');
