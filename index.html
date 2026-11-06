@@ -177,8 +177,13 @@ async function loadFiles(){try{
  const docs=check(await client.from('optp_documents').select('*').eq('object_id',selected));
  cachedDocs=docs;waterItems=docs.filter(f=>String(f.file_path||'').startsWith(selected+'/water/'));
  const regular=docs.filter(f=>!String(f.file_path||'').startsWith(selected+'/water/'));
- const buttons=(arr,kind)=>arr.map(f=>`<div class="docs"><span>${safe(f.title||'Схема')}${kind==='floor'&&f.floor_number!=null?' (этаж '+safe(f.floor_number)+')':''}</span><button type="button" class="secondary" data-open="${safe(f.file_path)}" data-kind="${kind}">Открыть</button></div>`).join('')||'<p class="hint">Пока нет файлов</p>';
- $('#floorList').innerHTML=buttons(floors,'floor');$('#docList').innerHTML=buttons(regular,'doc');
+ const buttons=(arr,kind)=>arr.map(f=>`<div class="docs"><span>${safe(f.title||'Схема')}${kind==='floor'&&f.floor_number!=null&&!/подвал|цоколь|подземн|техподполь/i.test(f.title||'')?' (этаж '+safe(f.floor_number)+')':''}</span><button type="button" class="secondary" data-open="${safe(f.file_path)}" data-kind="${kind}">Открыть</button></div>`).join('')||'<p class="hint">Пока нет файлов</p>';
+ const isLevel=f=>f.floor_number!=null||/(?:этаж|чердак|подвал|цоколь|мансард|подземн|техподполь)/i.test(f.title||'');
+ const levels=floors.filter(isLevel),other=floors.filter(f=>!isLevel(f));
+ $('#floorList').innerHTML=(levels.length?'<h4>Этажи, подвал и чердак</h4>'+buttons(levels,'floor'):'')
+ +(other.length?'<h4>Генплан и технологические схемы</h4>'+buttons(other,'floor'):'')
+ +(!floors.length?'<p class="hint">Пока нет планов и схем</p>':'');
+ $('#docList').innerHTML=buttons(regular,'doc');
  $('#waterSchemeList').innerHTML=buttons(waterItems,'water');renderCard()
 }catch(e){status('Ошибка получения схем: '+e.message,true)}}
 function openEditor(o){$('#objectUnit').value=o?.fire_unit_id||(units.some(u=>u.id===activeScope)?activeScope:'');if(o?.fire_unit_id&&!units.some(u=>u.id===o.fire_unit_id)){const option=new Option('Текущее подразделение (недоступно)',o.fire_unit_id);$('#objectUnit').add(option);$('#objectUnit').value=o.fire_unit_id}editId=o?.id||null;for(const f of ['name','address','district','floors','height_m','description','water_supply','evacuation'])$('#'+f).value=o?.[f]??'';$('#forces_and_means').value=o?.forces_and_means??'';$('#forces_and_means').disabled=!forcesReady;$('#forcesHint').textContent=forcesReady?'':'Поле доступно после SQL-миграции в Supabase.';show('editBox',true);$('#editTitle').textContent=o?'Редактировать объект':'Новый объект'}
