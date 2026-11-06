@@ -62,13 +62,14 @@ async function inspect(){
     const preview=fields.filter(f=>values[f]!==undefined).map(f=>'<div><b>'+safe(labels[f])+':</b> '+safe(String(values[f]).slice(0,450))+(String(values[f]).length>450?'…':'')+'</div>').join('');
     return '<tr><td>'+safe(o.name)+'</td><td>'+o.documents+'</td><td>'+o.floors+'</td><td>'+o.water+'</td><td><details><summary>'+Object.keys(values).length+' полей</summary>'+(preview||'Сведения не извлечены')+'</details></td></tr>';
   }).join('');
-  $('#folderPreview').innerHTML='<b>Объектов: '+result.objects.length+'; документов: '+docs+'; поэтажных схем: '+plans+'; схем водоснабжения: '+water+'.</b>'+
+  $('#folderPreview').innerHTML='<b>Объектов: '+result.objects.length+'; документов: '+docs+'; схем объекта: '+plans+'; схем водоснабжения: '+water+'.</b>'+
     '<p class="hint">Сведения DOCX распознаны для '+parsed+' объектов. Перед загрузкой раскройте предпросмотр и проверьте значения. Уже заполненные поля не перезаписываются.</p>'+
+ +'<p class="hint">Подпапки зерносушилок, этажей и других сооружений сохраняются в названиях схем. Водоснабжение находится в отдельной вкладке.</p>'+
     '<p class="hint">Пропущено файлов: '+result.skipped.length+'; ошибок файлов: '+result.errors.length+'; предупреждений по Word: '+warnings.length+'.</p>'+
     (result.errors.length?'<p class="error">'+result.errors.slice(0,5).map(safe).join('; ')+'</p>':'')+
     (result.skipped.length?'<p class="hint">Пропущены: '+result.skipped.slice(0,3).map(safe).join('; ')+'</p>':'')+
     (warnings.length?'<details><summary>Предупреждения о распознавании ('+warnings.length+')</summary><p class="hint">'+warnings.slice(0,12).map(safe).join('; ')+'</p></details>':'')+
-    (tableRows?'<table><thead><tr><th>Объект</th><th>Документы</th><th>Поэтажные</th><th>Водоснабжение</th><th>Сведения из Word</th></tr></thead><tbody>'+tableRows+'</tbody></table>':'');
+    (tableRows?'<table><thead><tr><th>Объект</th><th>Документы</th><th>Схемы</th><th>Водоснабжение</th><th>Сведения из Word</th></tr></thead><tbody>'+tableRows+'</tbody></table>':'');
   $('#saveFolder').disabled=!pending.length||!$('#folderConsent').checked;
  }finally{$('#previewFolder').disabled=false;}
 }
