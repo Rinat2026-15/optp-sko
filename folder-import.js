@@ -16,19 +16,29 @@
   if(!all.length)throw Error('Выберите папку с объектами');
   if(all.length>200)throw Error('Не более 200 файлов за один раз. Разделите папку на части.');
   const entries=[],skipped=[],errors=[],seen=new Set();
+  // webkitdirectory: корневая папка входит в webkitRelativePath.
+  // Поддерживаем как папку с объектами, так и папку одного объекта
+  // со вложенными "Поэтажные планы", "Документы" и т.п.
+  const paths=all.map(file=>String(file.webkitRelativePath||file.relativePath||'').replace(/\\/g,'/').split('/').filter(Boolean));
+  const support=/\.(doc|docx|pdf|jpe?g|png)$/i;
+  const auxiliary=/^(?:поэтажн(?:ые|ые\s+планы|ые\s+схемы)?|поэтажные планы|поэтажные схемы|планы этажей|схемы|этажи|этажные планы|документы|оптп|планы|чертежи)$/i;
+  const atRoot=paths.some(parts=>parts.length===2&&support.test(parts[1]||''));
+  const rootSubdirs=[...new Set(paths.filter(parts=>parts.length>=3).map(parts=>parts[1]))];
+  const looksLikeSingleObject=rootSubdirs.length>0&&rootSubdirs.every(name=>auxiliary.test(name));
+  const singleObject=atRoot||looksLikeSingleObject;
   for(const file of all){
    const rel=String(file.webkitRelativePath||file.relativePath||'').replace(/\\/g,'/');
    const parts=rel.split('/').filter(Boolean);
-   if(parts.length<3){skipped.push(rel||file.name+' (файл вне папки объекта)');continue}
+   if(parts.length<(singleObject?2:3)){skipped.push(rel||file.name+' (файл вне папки объекта)');continue}
    if(parts.some(part=>part==='.'||part==='..')){errors.push(rel+': некорректный путь');continue}
-   const objectName=parts[1].trim(), name=parts[parts.length-1].trim();
+   const objectName=(singleObject?parts[0]:parts[1]).trim(), name=parts[parts.length-1].trim();
    if(!objectName||objectName.length>150||!name){errors.push(rel+': проверьте название папки объекта');continue}
    if(/^~\$|^thumbs\.db$|^\.ds_store$/i.test(name))continue;
    const ext=(name.match(/\.([a-z0-9]+)$/i)?.[1]||'').toLowerCase();
    if(!['doc','docx','pdf','jpg','jpeg','png'].includes(ext)){skipped.push(rel+' (неподдерживаемый тип)');continue}
    if(!file.size || file.size>20*1024*1024){errors.push(rel+': файл пуст или превышает 20 МБ');continue}
    const base=name.replace(/\.[^.]+$/,'').trim();
-   const nested=parts.slice(2,-1).join(' ');
+   const nested=parts.slice(singleObject?1:2,-1).join(' ');
    const isFloor=PDF.test(name)||IMAGE.test(name) ? (floorHint.test(nested)||fileFloor.test(base)) : false;
    if(IMAGE.test(name)&&!isFloor){skipped.push(rel+' (изображение не обозначено как поэтажная схема)');continue}
    const kind=isFloor?'floor':'doc';

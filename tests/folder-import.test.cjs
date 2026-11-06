@@ -18,3 +18,16 @@ test('повторы одного документа в одном объект�
 test('нет названия объекта — не загружаем файл',()=>assert.equal(analyze([f('СПЧ-1/ОПТП.docx')]).entries.length,0));
 test('превышение 20 МБ отклоняется',()=>assert.equal(analyze([f('СПЧ-1/Школа/план.docx',21*1024*1024)]).errors.length,1));
 test('читаем этаж по имени файла',()=>{assert.equal(floorNumber('2 этаж'),2);assert.equal(floorNumber('Этаж 3'),3);assert.equal(floorNumber('Подвал'),-1)});
+
+test('папка одного объекта: Word прямо в корне и поэтажные планы',()=>{
+ const r=analyze([f('Театр кукол/ОПТП.docx'),f('Театр кукол/Поэтажные планы/Этаж 1.jpg'),f('Театр кукол/Поэтажные планы/Этаж 2.pdf')]);
+ assert.equal(r.objects.length,1);assert.equal(r.objects[0].name,'Театр кукол');assert.equal(r.entries.filter(x=>x.kind==='floor').length,2);
+});
+test('папка объекта с одними поэтажными планами',()=>{
+ const r=analyze([f('Школа/Поэтажные планы/Этаж 1.png')]);
+ assert.equal(r.objects[0].name,'Школа');assert.equal(r.entries[0].kind,'floor');
+});
+test('папка подразделения: разные объекты не объединяются',()=>{
+ const r=analyze([f('СПЧ-1/Школа/ОПТП.docx'),f('СПЧ-1/Театр/ОПТП.docx')]);
+ assert.equal(r.objects.length,2);
+});

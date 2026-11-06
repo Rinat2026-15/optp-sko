@@ -1,5 +1,5 @@
 // Кэшируется только оболочка приложения. ОПТП/схемы загружаются из Supabase через интернет.
-const CACHE = 'optp-sko-shell-v4.3-word-routing';
+const CACHE = 'optp-sko-shell-v4.4-folder-fix';
 const SHELL = ['./', './index.html', './units.js', './csv-import.js', './folder-import.js', './folder-upload-ui.js', './word-fields.js', './manifest.webmanifest', './icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(()=>self.skipWaiting()));
