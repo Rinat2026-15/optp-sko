@@ -11,7 +11,7 @@ test('несколько объектов разделяются по катал
 });
 test('обычный PDF без признаков этажа — документ',()=>assert.equal(analyze([f('СПЧ-1/Театр/ОПТП.pdf')]).entries[0].kind,'doc'));
 test('поэтажный PDF внутри папки — план',()=>assert.equal(analyze([f('СПЧ-1/Театр/Схемы/01.pdf')]).entries[0].kind,'floor'));
-test('неопознанные изображения пропускаются',()=>assert.equal(analyze([f('СПЧ-1/Театр/фасад.jpg')]).entries.length,0));
+test('изображения из папки объекта доступны во вкладке Схемы',()=>assert.equal(analyze([f('СПЧ-1/Театр/фасад.jpg')]).entries[0].kind,'floor'));
 test('повторы одного документа в одном объекте пропускаются',()=>{
  const r=analyze([f('СПЧ-1/Театр/ОПТП.docx'),f('СПЧ-1/Театр/Документы/ОПТП.docx')]);assert.equal(r.entries.length,1);assert.equal(r.skipped.length,1);
 });
@@ -65,5 +65,25 @@ test('схемы водоснабжения остаются в отдельно
 });
 test('документы Word и обычные фото не превращаются в планы',()=>{
  const r=analyze([f('Предприятие/Описание зерносушилки.docx'),f('Предприятие/Фото фасада.jpg')]);
- assert.equal(r.entries.length,1);assert.equal(r.entries[0].kind,'doc');assert.equal(r.skipped.length,1);
+ assert.equal(r.entries.length,2);assert.equal(r.entries[0].kind,'doc');assert.equal(r.entries[1].kind,'floor');
+});
+
+test('вкладка Схемы хранит одинаковые названия в разных зерносушилках',()=>{
+ const r=analyze([f('Завод/Зерносушилка №1/Этаж 1.pdf'),f('Завод/Зерносушилка №2/Этаж 1.pdf')]);
+ assert.equal(r.objects.length,1);assert.equal(r.entries.length,2);
+ assert.deepEqual(r.entries.map(x=>x.title),['Зерносушилка №1 / Этаж 1','Зерносушилка №2 / Этаж 1']);
+});
+test('водоснабжение не попадает в общие схемы',()=>{
+ const r=analyze([f('Завод/Схемы/Генплан.pdf'),f('Завод/Водоснабжение/Гидранты.png')]);
+ assert.deepEqual(r.entries.map(x=>x.kind),['floor','water']);
+});
+test('PDF с явным названием ОПТП остается документом',()=>{
+ const r=analyze([f('Завод/ОПТП.pdf'),f('Завод/Документы/Описание.pdf')]);
+ assert.deepEqual(r.entries.map(x=>x.kind),['doc','doc']);
+});
+test('папка схем выбранного объекта распознается без отдельного списка объектов',()=>{
+ const {analyzeObjectSchemes}=require('../folder-import.js');
+ const r=analyzeObjectSchemes([f('Чертежи/Элеватор №1/Этаж 1.png'),f('Чертежи/Элеватор №2/Этаж 1.png'),f('Чертежи/Водоснабжение/Схема гидрантов.jpg')]);
+ assert.equal(r.entries.length,3);assert.deepEqual(r.entries.map(x=>x.kind),['floor','floor','water']);
+ assert.equal(r.entries[0].title,'Элеватор №1 / Этаж 1');
 });
