@@ -31,3 +31,16 @@ test('папка подразделения: разные объекты не о
  const r=analyze([f('СПЧ-1/Школа/ОПТП.docx'),f('СПЧ-1/Театр/ОПТП.docx')]);
  assert.equal(r.objects.length,2);
 });
+
+test('схема расположения гидрантов при импорте папки отправляется в водоснабжение',()=>{
+ const r=analyze([f('ПЧ-3/Театр кукол/Схемы водоснабжения/Схема расположения гидрантов.pdf')]);
+ assert.equal(r.entries.length,1);assert.equal(r.entries[0].kind,'water');assert.equal(r.objects[0].water,1);
+});
+test('схема расположения водоисточников внутри папки одного объекта',()=>{
+ const r=analyze([f('Театр кукол/Водоснабжение/Схема расположения гидрантов.jpg'),f('Театр кукол/Поэтажные планы/Этаж 1.png')]);
+ assert.equal(r.objects.length,1);assert.equal(r.entries.find(x=>x.kind==='water').objectName,'Театр кукол');assert.equal(r.entries.find(x=>x.kind==='floor').floorNumber,1);
+});
+test('документ Word о водоснабжении не принимается за изображение схемы',()=>{
+ const r=analyze([f('Театр/Водоснабжение/Описание.docx')]);
+ assert.equal(r.entries[0].kind,'doc');
+});
