@@ -2,6 +2,7 @@
 (function(root){
  'use strict';
  const WORD=/\.(doc|docx)$/i, PDF=/\.pdf$/i, IMAGE=/\.(jpe?g|png)$/i;
+ const waterHint=/(?:водоснабжен|гидрант|водоисточник|водозабор|пожарн.{0,14}водо[её]м|схем.{0,30}водо[её]м|расположен.{0,30}пг(?:\\b|\\d))/i;
  const floorHint=/(?:поэтаж|схем[аы]?|этаж[иаи]?|floor|план[ы]?\s+этаж|plans?\s*floor)/i;
  const fileFloor=/(?:^|[\s._(-])(?:-?\d{1,2}\s*[-–— ]*?(?:-?й|-?го|-?ый)?\s*(?:эт\.?|этаж|floor)|(?:эт\.?|этаж|floor)\s*[№# ]*\-?\d{1,2}|поэтажн(?:ый|ая|ое))/i;
  const norm=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('ru');
@@ -21,7 +22,7 @@
   // со вложенными "Поэтажные планы", "Документы" и т.п.
   const paths=all.map(file=>String(file.webkitRelativePath||file.relativePath||'').replace(/\\/g,'/').split('/').filter(Boolean));
   const support=/\.(doc|docx|pdf|jpe?g|png)$/i;
-  const auxiliary=/^(?:поэтажн(?:ые|ые\s+планы|ые\s+схемы)?|поэтажные планы|поэтажные схемы|планы этажей|схемы|этажи|этажные планы|документы|оптп|планы|чертежи)$/i;
+  const auxiliary=/^(?:поэтажн(?:ые|ые\s+планы|ые\s+схемы)?|поэтажные планы|поэтажные схемы|планы этажей|схемы|этажи|этажные планы|документы|оптп|планы|чертежи|водоснабжение|наружное водоснабжение|схемы водоснабжения|гидранты|схемы гидрантов|схемы расположения гидрантов)$/i;
   const atRoot=paths.some(parts=>parts.length===2&&support.test(parts[1]||''));
   const rootSubdirs=[...new Set(paths.filter(parts=>parts.length>=3).map(parts=>parts[1]))];
   const looksLikeSingleObject=rootSubdirs.length>0&&rootSubdirs.every(name=>auxiliary.test(name));
@@ -39,9 +40,10 @@
    if(!file.size || file.size>20*1024*1024){errors.push(rel+': файл пуст или превышает 20 МБ');continue}
    const base=name.replace(/\.[^.]+$/,'').trim();
    const nested=parts.slice(singleObject?1:2,-1).join(' ');
-   const isFloor=PDF.test(name)||IMAGE.test(name) ? (floorHint.test(nested)||fileFloor.test(base)) : false;
-   if(IMAGE.test(name)&&!isFloor){skipped.push(rel+' (изображение не обозначено как поэтажная схема)');continue}
-   const kind=isFloor?'floor':'doc';
+   const isWater=(PDF.test(name)||IMAGE.test(name))&&waterHint.test(nested+' '+base);
+   const isFloor=!isWater&&(PDF.test(name)||IMAGE.test(name))&&(floorHint.test(nested)||fileFloor.test(base));
+   if(IMAGE.test(name)&&!isFloor&&!isWater){skipped.push(rel+' (изображение не обозначено как схема)');continue}
+   const kind=isWater?'water':isFloor?'floor':'doc';
    const key=[norm(objectName),kind,norm(base)].join('|');
    if(seen.has(key)){skipped.push(rel+' (повтор имени файла)');continue}
    seen.add(key);
@@ -49,8 +51,8 @@
   }
   const map=new Map();
   for(const item of entries){
-   const key=norm(item.objectName);if(!map.has(key))map.set(key,{name:item.objectName,documents:0,floors:0});
-   map.get(key)[item.kind==='floor'?'floors':'documents']++;
+   const key=norm(item.objectName);if(!map.has(key))map.set(key,{name:item.objectName,documents:0,floors:0,water:0});
+   map.get(key)[item.kind==='floor'?'floors':item.kind==='water'?'water':'documents']++;
   }
   return {entries,objects:[...map.values()],skipped,errors};
  }
