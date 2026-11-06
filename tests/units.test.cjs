@@ -1,0 +1,11 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {filterObjects}=require('../units.js');
+const units=[{id:'a',name:'ПЧ А'},{id:'b',name:'ПЧ Б'}];
+const objects=[{id:1,name:'Школа',address:'Мира',fire_unit_id:'a'},{id:2,name:'Больница',district:'Район',fire_unit_id:'b'},{id:3,name:'Склад',fire_unit_id:null},{id:4,name:'Музей'}];
+const ids=(scope,q='')=>filterObjects(objects,units,scope,q).map(o=>o.id);
+test('unit scope excludes other units and unassigned objects',()=>assert.deepEqual(ids('a'),[1]));
+test('unassigned includes legacy objects',()=>assert.deepEqual(ids('unassigned'),[3,4]));
+test('global search covers unit, address, district and case',()=>{assert.deepEqual(ids('all',' пч б '),[2]);assert.deepEqual(ids('all','МИРА'),[1]);assert.deepEqual(ids('all','район'),[2])});
+test('scope and query combine and handle no results',()=>assert.deepEqual(ids('a','Больница'),[]));
+test('empty catalogue and unavailable unit names',()=>{assert.deepEqual(filterObjects([],[],'all',''),[]);assert.equal(filterObjects(objects,[],'all','').length,4)});
