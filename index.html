@@ -294,7 +294,7 @@ else if(e.target.id==='addFloorPlan'){
 }else if(e.target.id==='addTechScheme'){
  $('#kind').value='scheme';$('#kind').onchange();$('#fileTitle').value='';$('#fileTitle').placeholder='Например: Генплан, схема зерносушилки';$('#fileForm').scrollIntoView({block:'center',behavior:'smooth'})
 }else if(e.target.id==='addWaterScheme'){
- $('#kind').value='water';$('#fileTitle').value='Схема расположения водоисточников';
+ $('#kind').value='water';$('#kind').onchange();$('#fileTitle').value='Схема расположения водоисточников';
  $('#fileInput').accept='.jpg,.jpeg,.png,.pdf';$('#fileForm').scrollIntoView({block:'center',behavior:'smooth'})
 }else openFileFromClick(e)};
 $('#objForm').onsubmit=async e=>{e.preventDefault();if(role!=='admin'&&role!=='editor')return;try{const payload={};if(unitsReady)payload.fire_unit_id=$('#objectUnit').value||null;for(const f of ['name','address','district','description','water_supply','evacuation'])payload[f]=$('#'+f).value.trim();if(forcesReady)payload.forces_and_means=$('#forces_and_means').value.trim();for(const f of ['floors','height_m'])payload[f]=$('#'+f).value===''?null:Number($('#'+f).value);let r=editId?await client.from('optp_objects').update(payload).eq('id',editId).select().single():await client.from('optp_objects').insert(payload).select().single();selected=check(r).id;await loadObjects();status('Объект сохранён в облачной базе')}catch(e){status('Ошибка сохранения: '+e.message,true)}};
