@@ -166,7 +166,7 @@ else if(currentTab==='water')content=line('Наружное и внутренн�
 +(role==='admin'||role==='editor'?'<button type="button" id="addWaterScheme" class="secondary">+ Добавить схему расположения</button>':'');
 else if(currentTab==='floor')content='<p class="hint">Нажмите «Открыть» для просмотра схемы, масштабирования и переключения этажей.</p>'+($('#floorList').innerHTML||'<span class="hint">Схемы не загружены</span>');
 else content=line('Привлекаемые силы и средства',o.forces_and_means)+'<p class="hint">Оригиналы оперативных документов:</p>'+($('#docList').innerHTML||'<span class="hint">Материалы не загружены</span>');
-$('#details').innerHTML=`<button type="button" id="backToObjects" class="back-list">← К списку объектов</button><h2>${safe(o.name)}</h2><div class="tabbar">${tabs.map(([id,title])=>`<button type="button" class="${currentTab===id?'active':''}" data-tab="${id}">${title}</button>`).join('')}</div><div class="tab-content">${content}</div>${role==='admin'||role==='editor'?'<button type="button" id="editObject">Редактировать карточку</button>':''}${role==='admin'?'<button type="button" id="deleteObject" class="delete-object-button">Удалить объект</button>':''}`;
+$('#details').innerHTML=`<button type="button" id="backToObjects" class="back-list">← К списку объектов</button><h2>${safe(o.name)}</h2><div class="tabbar">${tabs.map(([id,title])=>`<button type="button" class="${currentTab===id?'active':''}" data-tab="${id}">${title}</button>`).join('')}</div><div class="tab-content">${content}</div>${role==='admin'||role==='editor'?'<button type="button" id="editObject">Редактировать карточку</button>':''}${role==='admin'?'<button type="button" id="deleteObject" class="delete-object-button">Удалить объект</button><button type="button" id="checkDeleteConfig" class="secondary">Проверить удаление</button><p id="deleteFeedback" role="status" class="hint"></p>':''}`;
 }
 async function drawDetails(){const o=objs.find(x=>x.id===selected);show('files',!!o&&(role==='admin'||role==='editor'));show('editBox',false);if(!o){document.body.classList.remove('object-open');$('#details').textContent='Выберите объект';return}document.body.classList.add('object-open');await loadFiles();renderCard()}
 async function loadFiles(){try{
@@ -180,6 +180,51 @@ async function loadFiles(){try{
  $('#waterSchemeList').innerHTML=buttons(waterItems,'water');renderCard()
 }catch(e){status('Ошибка получения схем: '+e.message,true)}}
 function openEditor(o){$('#objectUnit').value=o?.fire_unit_id||(units.some(u=>u.id===activeScope)?activeScope:'');if(o?.fire_unit_id&&!units.some(u=>u.id===o.fire_unit_id)){const option=new Option('Текущее подразделение (недоступно)',o.fire_unit_id);$('#objectUnit').add(option);$('#objectUnit').value=o.fire_unit_id}editId=o?.id||null;for(const f of ['name','address','district','floors','height_m','description','water_supply','evacuation'])$('#'+f).value=o?.[f]??'';$('#forces_and_means').value=o?.forces_and_means??'';$('#forces_and_means').disabled=!forcesReady;$('#forcesHint').textContent=forcesReady?'':'Поле доступно после SQL-миграции в Supabase.';show('editBox',true);$('#editTitle').textContent=o?'Редактировать объект':'Новый объект'}
+function deleteErrorText(error){
+ const code=String(error?.code||'');
+ const msg=String(error?.message||error||'Неизвестная ошибка');
+ if(code==='PGRST202'||code==='42883'||/Could not find the function|function public\.optp_admin_delete_object|schema cache/i.test(msg))
+  return 'Функция удаления отсутствует в Supabase. Выполните SQL из файла 202611060004_delete_object.sql в SQL Editor. Код ошибки: '+(code||msg);
+ if(code==='42501'||/permission denied|нет прав|только администратор|Unauthorized/i.test(msg))
+  return 'Нет разрешения на удаление. Убедитесь, что вошли под ролью admin в Supabase. '+msg;
+ if(code==='23503'||/foreign key constraint|violates foreign key/i.test(msg))
+  return 'Удалению мешают связанные записи в базе. Сообщите код и текст ошибки: '+code+' '+msg;
+ return 'Ошибка Supabase ('+(code||'код не указан')+'): '+msg;
+}
+function showDeleteFeedback(message,bad=false,showSql=false){
+ const target=$('#deleteFeedback');
+ if(target){
+  target.replaceChildren();
+  target.append(document.createTextNode(message));
+  target.className=bad?'error':'hint';
+  if(showSql){
+   const link=document.createElement('a');
+   link.href='https://github.com/Rinat2026-15/optp-sko/blob/main/supabase/migrations/202611060004_delete_object.sql';
+   link.target='_blank';link.rel='noopener noreferrer';
+   link.textContent=' Открыть SQL для настройки удаления.';
+   target.append(link);
+  }
+ }
+ status(message,bad);
+}
+async function checkDeleteConfiguration(){
+ if(role!=='admin'||!selected)return;
+ const btn=$('#checkDeleteConfig');if(btn)btn.disabled=true;
+ showDeleteFeedback('Проверяю функцию удаления в Supabase…');
+ try{
+  // NULL вызывает защитную проверку в нашей SQL-функции; никакой объект не удаляется.
+  const result=await client.rpc('optp_admin_delete_object',{p_object_id:null});
+  if(result.error&&/Не указан объект/i.test(result.error.message||'')){
+   showDeleteFeedback('Настройка удаления доступна. Теперь можно удалить объект.',false);
+  }else if(result.error){
+   const message=deleteErrorText(result.error);
+   showDeleteFeedback(message,true,/202611060004_delete_object.sql/.test(message));
+  }else{
+   showDeleteFeedback('Сервер неожиданно принял пустой идентификатор. Удаление остановлено: проверьте SQL-функцию.',true);
+  }
+ }catch(err){showDeleteFeedback(deleteErrorText(err),true)}
+ finally{const control=$('#checkDeleteConfig');if(control)control.disabled=false}
+}
 async function deleteCurrentObject(){
  if(deleteBusy||role!=='admin')return;
  const object=objs.find(o=>o.id===selected);
@@ -192,7 +237,7 @@ async function deleteCurrentObject(){
  if(!window.confirm('БЕЗВОЗВРАТНО удалить объект «'+object.name+'», все его ОПТП, документы, поэтажные планы и схемы водоснабжения?'))return;
  deleteBusy=true;
  const button=$('#deleteObject');if(button)button.disabled=true;
- status('Удаление объекта и записей из базы…');
+ showDeleteFeedback('Удаление объекта и записей из базы…');
  try{
   // Объект и связанные строки удаляются одним транзакционным вызовом;
   // при ошибке RPC база остаётся без изменений.
@@ -212,14 +257,13 @@ async function deleteCurrentObject(){
   selected=null;document.body.classList.remove('object-open');show('editBox',false);show('files',false);
   await loadObjects();
   if(failures.length||unexpected){
-   status('Объект «'+name+'» удалён из базы, но '+(failures.length+unexpected)+' файлов могли остаться в Supabase Storage. Требуется очистка файлов в разделе Storage.',true);
+   showDeleteFeedback('Объект «'+name+'» удалён из базы, но '+(failures.length+unexpected)+' файлов могли остаться в Supabase Storage. Требуется очистка файлов в разделе Storage.',true);
   }else{
-   status('Объект «'+name+'» удалён вместе с документами и схемами.');
+   showDeleteFeedback('Объект «'+name+'» удалён вместе с документами и схемами.');
   }
  }catch(error){
-  if(/optp_admin_delete_object|schema cache|function/i.test(error.message)){
-   status('Удаление недоступно: необходимо один раз выполнить SQL-миграцию 202611060004_delete_object.sql в Supabase SQL Editor. '+error.message,true);
-  }else status('Ошибка удаления: '+error.message,true);
+  const message=deleteErrorText(error);
+  showDeleteFeedback(message,true,/202611060004_delete_object.sql/.test(message));
  }finally{
   deleteBusy=false;
   const current=$('#deleteObject');if(current)current.disabled=false;
@@ -237,6 +281,7 @@ $('#previewCsv').onclick=async()=>{try{await previewImportFile()}catch(e){import
 $('#saveCsv').onclick=async()=>{try{await saveImportFile()}catch(e){$('#csvPreview').textContent=e.message;status('Ошибка импорта: '+e.message,true)}};
 $('#reload').onclick=loadObjects;$('#newObject').onclick=()=>{if(activeScope===null)activeScope='all';updateUnitNavigation();openEditor(null)};$('#cancelEdit').onclick=()=>show('editBox',false);$('#details').onclick=e=>{if(e.target.closest('#backToObjects')){selected=null;document.body.classList.remove('object-open');show('files',false);show('editBox',false);drawObjects();drawDetails();$('#search').scrollIntoView({block:'start'});return}const t=e.target.closest('[data-tab]');if(t){currentTab=t.dataset.tab;renderCard();return}if(e.target.id==='editObject')openEditor(objs.find(x=>x.id===selected));
 else if(e.target.id==='deleteObject')deleteCurrentObject();
+else if(e.target.id==='checkDeleteConfig')checkDeleteConfiguration();
 else if(e.target.id==='addWaterScheme'){
  $('#kind').value='water';$('#fileTitle').value='Схема расположения водоисточников';
  $('#fileInput').accept='.jpg,.jpeg,.png,.pdf';$('#fileForm').scrollIntoView({block:'center',behavior:'smooth'})
