@@ -1,5 +1,5 @@
 // Кэшируется только оболочка приложения. ОПТП/схемы загружаются из Supabase через интернет.
-const CACHE = 'optp-sko-shell-v4.9-schemes-water-separate';
+const CACHE = 'optp-sko-shell-v4.10-delete-preflight';
 const SHELL = ['./', './index.html', './units.js', './csv-import.js', './folder-import.js', './folder-upload-ui.js', './word-fields.js', './manifest.webmanifest', './icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(()=>self.skipWaiting()));
