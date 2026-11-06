@@ -56,7 +56,35 @@
   }
   return {entries,objects:[...map.values()],skipped,errors};
  }
- const api={analyze,floorNumber};
+ function analyzeBatches(batches){
+  const batchesArray=Array.from(batches||[]);
+  if(!batchesArray.length)throw Error('Добавьте хотя бы одну папку');
+  const total=batchesArray.reduce((sum,b)=>sum+Array.from(b.files||[]).length,0);
+  if(total>200)throw Error('Выбрано '+total+' файлов. Максимум 200 файлов за загрузку: разделите папки на две группы.');
+  const entries=[],skipped=[],errors=[],seen=new Map(),objects=new Map();
+  for(const batch of batchesArray){
+   const result=analyze(batch.files);
+   skipped.push(...result.skipped);errors.push(...result.errors);
+   for(const item of result.entries){
+    const key=[norm(item.objectName),item.kind,norm(item.title),item.extension].join('|');
+    const prior=seen.get(key);
+    if(prior){
+     const sameSize=prior.file.size===item.file.size;
+     const sameModified=prior.file.lastModified===item.file.lastModified;
+     if(sameSize&&sameModified)skipped.push(item.relativePath+' (уже добавлено)');
+     else errors.push(item.relativePath+' (другой файл с таким же названием в этом объекте; переименуйте один из файлов)');
+     continue;
+    }
+    seen.set(key,item);entries.push(item);
+    const objKey=norm(item.objectName);
+    if(!objects.has(objKey))objects.set(objKey,{name:item.objectName,documents:0,floors:0,water:0});
+    const label=item.kind==='floor'?'floors':item.kind==='water'?'water':'documents';
+    objects.get(objKey)[label]++;
+   }
+  }
+  return {entries,objects:[...objects.values()],skipped,errors};
+ }
+ const api={analyze,analyzeBatches,floorNumber};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  else root.OPTPFolderImport=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
