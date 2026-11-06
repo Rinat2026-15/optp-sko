@@ -23,7 +23,7 @@ function extractFields(paragraphs){
  const fields={},parts={description:[],water_supply:[],evacuation:[],forces_and_means:[]},warnings=[];
  // Word часто хранит название поля и значение в отдельных ячейках таблицы.
  const source=(paragraphs||[]).map(normalize).filter(Boolean),combined=[];
- const standalone=/^(?:адрес(?:\\s+(?:объекта|расположения|местонахождения))?|местонахождение|месторасположение|район|город|насел[её]нный пункт|этажность|количество этажей|число этажей|высота(?:\\s+(?:здания|объекта))?(?:\\s*,?\\s*м)?)[:.]?$/i;
+ const standalone=/^(?:адрес(?:\s+(?:объекта|расположения|местонахождения))?|местонахождение|месторасположение|район|город|насел[её]нный пункт|этажность|количество этажей|число этажей|высота(?:\s+(?:здания|объекта))?(?:\s*,?\s*м)?)[:.]?$/i;
  for(let i=0;i<source.length;i++){
   const line=source[i],next=source[i+1]||'';
   if(standalone.test(line)&&next&&next.length<250&&!heading(next)){
